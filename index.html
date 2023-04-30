@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game</title>
+    <title>Trails</title>
     <style>
         canvas {
             display: block;
@@ -42,17 +42,21 @@
 
         const tileCount = canvas.width / gridSize;
 
-        /* Initialize snake, velocity, apple, and score */
+        /* Initialize snake, velocity*/
         let snake = [{ x: 10, y: 10 }];
+let compSnake = [{ x: 5, y: 15 }];
+
         // x and y: determine starting position of snake 
 
         let velocity = { x: 0, y: 0 };
-        //determines the starting x and y velocity of the snake, must be an integer to avoid collision issues with the apple
+        
+// Initialize computer snake and its velocity
+
+let compVelocity = { x: 1, y: 0 };
+        //determines the starting x and y velocity of the snake, must be an integer to avoid collision issues 
 
 
 
-        let score = 0;
-        //initial score
 
         let gameStarted = false;
 
@@ -63,7 +67,7 @@
     ctx.font = "20px Arial";
     ctx.fillText("by Brandon Kiefer", canvas.width / 2 - 95, canvas.height / 2);
     ctx.font = "20px Arial";
-    ctx.fillText("Press any key to start", canvas.width / 2 - 135, canvas.height / 2 + 100);
+    ctx.fillText("Press and hold arrow key to start the game", canvas.width / 2 - 135, canvas.height / 2 + 100);
 }
 
 
@@ -80,118 +84,139 @@
     setTimeout(gameLoop, 1000 / 15); // 15 FPS
 }
 
-// Initialize computer snake and its velocity
-let compSnake = [{ x: 5, y: 5 }];
-let compVelocity = { x: 1, y: 0 };
 
 
 
       // Update game state
       function updateGame() {
-            // Calculate new head position
-            const head = { ...snake[0] };
-            head.x += velocity.x;
-            head.y += velocity.y;
+    // Calculate new head position
+    const head = { ...snake[0] };
+    head.x += velocity.x;
+    head.y += velocity.y;
 
-            // Check if snake hits the border or itself, and reset the game if it does
-            if (head.x < 0 || head.y < 0 || head.x >= tileCountX || head.y >= tileCountY) {
-                return resetGame();
-            }
+    // Check if snake hits the border or itself, and reset the game if it does
+    if (head.x < 0 || head.y < 0 || head.x >= tileCountX || head.y >= tileCountY) {
+        return resetGame();
+    }
 
-            for (const segment of snake.slice(1)) {
-                if (head.x === segment.x && head.y === segment.y) {
-                    return resetGame();
-                }
-            }
-
-            // Add new head to the snake
-            snake.unshift(head);
+    for (const segment of snake.slice(1)) {
+        if (head.x === segment.x && head.y === segment.y) {
+            return resetGame();
         }
+    }
 
-        // Reset game state
-        function resetGame() {
-            snake = [{ x: 10, y: 10 }];
-            velocity = { x: 0, y: 0 };
-            score = 0;
+    // Check if player snake hits the computer snake's trail
+    for (const compSegment of compSnake) {
+        if (head.x === compSegment.x && head.y === compSegment.y) {
+            return resetGame();
         }
+    }
 
+    // Add new head to the snake
+    snake.unshift(head);
 
-        function updateCompSnake() {
-  const compHead = { ...compSnake[0] };
-  compHead.x += compVelocity.x;
-  compHead.y += compVelocity.y;
-
-  // Turn computer snake when it reaches the edge of the canvas border or player trail
-  if (
-    compHead.x < 0 ||
-    compHead.y < 0 ||
-    compHead.x >= tileCountX ||
-    compHead.y >= tileCountY ||
-    isCollidingWithSnake(snake, compHead)
-  ) {
-    turnCompSnake();
-    return;
-  }
-
-  // Check if player snake's head touches the computer snake's head or trail
-  if (isCollidingWithSnake(compSnake, snake[0])) {
-    resetGame();
-    return;
-  }
-
-  // Add new head to the computer snake
-  compSnake.unshift(compHead);
 }
+
+
+
+
+function updateCompSnake() {
+    // Add this condition to only update the computer snake when the game is started
+    if (!gameStarted) {
+        return;
+    }
+
+    const compHead = { ...compSnake[0] };
+    compHead.x += compVelocity.x;
+    compHead.y += compVelocity.y;
+
+    // Check if computer snake is about to collide with itself, canvas border, player trail or player's head
+    if (
+        isCollidingWithSnake(compSnake.slice(1), compHead) ||
+        compHead.x < 0 ||
+        compHead.y < 0 ||
+        compHead.x >= tileCountX ||
+        compHead.y >= tileCountY ||
+        isCollidingWithSnake(snake, compHead)
+    ) {
+        turnCompSnake();
+        return;
+    }
+
+    // Add new head to the computer snake
+    compSnake.unshift(compHead);
+}
+
+
+
 
 function turnCompSnake() {
-  const availableDirections = [
-    { x: 1, y: 0 },
-    { x: -1, y: 0 },
-    { x: 0, y: 1 },
-    { x: 0, y: -1 },
-  ];
+    const availableDirections = [
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 },
+    ];
 
-  // Remove current direction from availableDirections
-  availableDirections.splice(
-    availableDirections.findIndex(
-      (dir) => dir.x === compVelocity.x && dir.y === compVelocity.y
-    ),
-    1
-  );
+    // Remove opposite direction of the current velocity from availableDirections
+    availableDirections.splice(
+        availableDirections.findIndex(
+            (dir) => dir.x === -compVelocity.x && dir.y === -compVelocity.y
+        ),
+        1
+    );
 
-  // Try to find a valid direction that doesn't lead to a collision
-  for (let i = availableDirections.length - 1; i >= 0; i--) {
-    const newDirection = availableDirections[i];
-    const newCompHead = {
-      x: compSnake[0].x + newDirection.x,
-      y: compSnake[0].y + newDirection.y,
-    };
+    // Filter out directions that would lead to collisions
+    const validDirections = availableDirections.filter((dir) => {
+        const newCompHead = {
+            x: compSnake[0].x + dir.x,
+            y: compSnake[0].y + dir.y,
+        };
 
-    if (
-      newCompHead.x >= 0 &&
-      newCompHead.y >= 0 &&
-      newCompHead.x < tileCountX &&
-      newCompHead.y < tileCountY &&
-      !isCollidingWithSnake(snake, newCompHead)
-    ) {
-      compVelocity = newDirection;
-      return;
+        return (
+            newCompHead.x >= 0 &&
+            newCompHead.y >= 0 &&
+            newCompHead.x < tileCountX &&
+            newCompHead.y < tileCountY &&
+            !isCollidingWithSnake(snake, newCompHead) &&
+            !isCollidingWithSnake(compSnake.slice(1), newCompHead)
+        );
+    });
+
+    // If there are valid directions, choose one at random
+    if (validDirections.length > 0) {
+        const randomIndex = Math.floor(Math.random() * validDirections.length);
+        compVelocity = validDirections[randomIndex];
     } else {
-      availableDirections.splice(i, 1);
+        // If no valid directions are available, reset the game
+        resetGame();
+        return;
     }
-  }
-
-  // If no valid direction found, choose a random remaining direction
-  if (availableDirections.length > 0) {
-    const randomIndex = Math.floor(Math.random() * availableDirections.length);
-    compVelocity = availableDirections[randomIndex];
-  }
 }
+
+
 
 function isCollidingWithSnake(targetSnake, position) {
   return targetSnake.some(
     (segment) => segment.x === position.x && segment.y === position.y
   );
+}
+
+function renderGameOver() {
+    ctx.fillStyle = "#fff";
+    ctx.font = "30px Arial";
+    ctx.fillText("Game Over", canvas.width / 2 - 75, canvas.height / 2 - 30);
+    ctx.font = "20px Arial";
+    ctx.fillText("Press any arrow key to restart the game", canvas.width / 2 - 135, canvas.height / 2);
+}
+
+function resetGame() {
+    snake = [{ x: 10, y: 10 }];
+    compSnake = [{ x: 5, y: 15 }];
+    velocity = { x: 0, y: 0 };
+    compVelocity = { x: 1, y: 0 };
+    gameStarted = false;
+    renderGameOver(); // Call renderGameOver function here
 }
 
 
@@ -204,7 +229,7 @@ function renderGame() {
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Draw player snake
-            ctx.fillStyle = "#0f0";
+            ctx.fillStyle = "#FFF";
             for (const segment of snake) {
                 ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
             }
@@ -215,24 +240,37 @@ function renderGame() {
                 ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
             }
 
-            // Draw score
-            ctx.fillStyle = "#fff";
-            ctx.font = "20px Arial";
-            ctx.fillText(`Score: ${score}`, 5, 20);
         }
 
         // Handle arrow key inputs for snake movement
         function handleKeydown(event) {
-            if (!gameStarted) {
-        gameStarted = true;
-        return;
-    }
-            const key = event.key;
-            if (key === "ArrowUp" && velocity.y === 0) velocity = { x: 0, y: -1 };
-            if (key === "ArrowDown" && velocity.y === 0) velocity = { x: 0, y: 1 };
-            if (key === "ArrowLeft" && velocity.x === 0) velocity = { x: -1, y: 0 };
-            if (key === "ArrowRight" && velocity.x === 0) velocity = { x: 1, y: 0 };
+    const key = event.key;
+    if (!gameStarted) {
+        if (key === "ArrowUp") {
+            gameStarted = true;
+            velocity = { x: 0, y: -1 };
         }
+        if (key === "ArrowDown") {
+            gameStarted = true;
+            velocity = { x: 0, y: 1 };
+        }
+        if (key === "ArrowLeft") {
+            gameStarted = true;
+            velocity = { x: -1, y: 0 };
+        }
+        if (key === "ArrowRight") {
+            gameStarted = true;
+            velocity = { x: 1, y: 0 };
+        }
+    } else {
+        if (key === "ArrowUp" && velocity.y === 0) velocity = { x: 0, y: -1 };
+        if (key === "ArrowDown" && velocity.y === 0) velocity = { x: 0, y: 1 };
+        if (key === "ArrowLeft" && velocity.x === 0) velocity = { x: -1, y: 0 };
+        if (key === "ArrowRight" && velocity.x === 0) velocity = { x: 1, y: 0 };
+    }
+}
+
+
 
         // Add event listener for keydown events
         document.addEventListener("keydown", handleKeydown);
