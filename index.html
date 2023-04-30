@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        canvas {
+            display: block;
+            margin: auto;
+            background-color: #000;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+    </style>
+
+<body>
+    <!-- creating and determining size of the game canvas-->
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+
+    <script>
+        /* Get canvas and its 2D context JS documentation on Canvas getContext:
+        https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext */
+
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        /** Set grid size and tile count **/
+        const gridSize = 20;
+        const tileCountX = canvas.width / gridSize;
+        const tileCountY = canvas.height / gridSize;
+        //determines grid size of apple and snek && the tile units of space in which occupy the game canvas
+        //tileCountX: The number of horizontal tiles (cells) in the grid of the game canvas.
+        //tileCountY: The number of vertical tiles (cells) in the grid of the game canvas.
+
+
+
+        const tileCount = canvas.width / gridSize;
+
+        /* Initialize snake, velocity, apple, and score */
+        let snake = [{ x: 10, y: 10 }];
+        // x and y: determine starting position of snake 
+
+        let velocity = { x: 0, y: 0 };
+        //determines the starting x and y velocity of the snake, must be an integer to avoid collision issues with the apple
+
+
+
+        let score = 0;
+        //initial score
+
+        let gameStarted = false;
+
+        function renderTitleScreen() {
+    ctx.fillStyle = "#fff";
+    ctx.font = "30px Arial";
+    ctx.fillText("Trails", canvas.width / 2 - 75, canvas.height / 2 - 30);
+    ctx.font = "20px Arial";
+    ctx.fillText("by Brandon Kiefer", canvas.width / 2 - 95, canvas.height / 2);
+    ctx.font = "20px Arial";
+    ctx.fillText("Press any key to start", canvas.width / 2 - 135, canvas.height / 2 + 100);
+}
+
+
+
+        /*** Main game loop ***/
+        function gameLoop() {
+    if (!gameStarted) {
+        renderTitleScreen();
+    } else {
+        updateGame();
+        updateCompSnake(); // Add this line to update the computer snake
+        renderGame();
+    }
+    setTimeout(gameLoop, 1000 / 15); // 15 FPS
+}
+
+// Initialize computer snake and its velocity
+let compSnake = [{ x: 5, y: 5 }];
+let compVelocity = { x: 1, y: 0 };
+
+
+
+      // Update game state
+      function updateGame() {
+            // Calculate new head position
+            const head = { ...snake[0] };
+            head.x += velocity.x;
+            head.y += velocity.y;
+
+            // Check if snake hits the border or itself, and reset the game if it does
+            if (head.x < 0 || head.y < 0 || head.x >= tileCountX || head.y >= tileCountY) {
+                return resetGame();
+            }
+
+            for (const segment of snake.slice(1)) {
+                if (head.x === segment.x && head.y === segment.y) {
+                    return resetGame();
+                }
+            }
+
+            // Add new head to the snake
+            snake.unshift(head);
+        }
+
+        // Reset game state
+        function resetGame() {
+            snake = [{ x: 10, y: 10 }];
+            velocity = { x: 0, y: 0 };
+            score = 0;
+        }
+
+
+        function updateCompSnake() {
+  const compHead = { ...compSnake[0] };
+  compHead.x += compVelocity.x;
+  compHead.y += compVelocity.y;
+
+  // Turn computer snake when it reaches the edge of the canvas border or player trail
+  if (
+    compHead.x < 0 ||
+    compHead.y < 0 ||
+    compHead.x >= tileCountX ||
+    compHead.y >= tileCountY ||
+    isCollidingWithSnake(snake, compHead)
+  ) {
+    turnCompSnake();
+    return;
+  }
+
+  // Check if player snake's head touches the computer snake's head or trail
+  if (isCollidingWithSnake(compSnake, snake[0])) {
+    resetGame();
+    return;
+  }
+
+  // Add new head to the computer snake
+  compSnake.unshift(compHead);
+}
+
+function turnCompSnake() {
+  const availableDirections = [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 },
+  ];
+
+  // Remove current direction from availableDirections
+  availableDirections.splice(
+    availableDirections.findIndex(
+      (dir) => dir.x === compVelocity.x && dir.y === compVelocity.y
+    ),
+    1
+  );
+
+  // Try to find a valid direction that doesn't lead to a collision
+  for (let i = availableDirections.length - 1; i >= 0; i--) {
+    const newDirection = availableDirections[i];
+    const newCompHead = {
+      x: compSnake[0].x + newDirection.x,
+      y: compSnake[0].y + newDirection.y,
+    };
+
+    if (
+      newCompHead.x >= 0 &&
+      newCompHead.y >= 0 &&
+      newCompHead.x < tileCountX &&
+      newCompHead.y < tileCountY &&
+      !isCollidingWithSnake(snake, newCompHead)
+    ) {
+      compVelocity = newDirection;
+      return;
+    } else {
+      availableDirections.splice(i, 1);
+    }
+  }
+
+  // If no valid direction found, choose a random remaining direction
+  if (availableDirections.length > 0) {
+    const randomIndex = Math.floor(Math.random() * availableDirections.length);
+    compVelocity = availableDirections[randomIndex];
+  }
+}
+
+function isCollidingWithSnake(targetSnake, position) {
+  return targetSnake.some(
+    (segment) => segment.x === position.x && segment.y === position.y
+  );
+}
+
+
+
+
+// Render game state on the canvas
+function renderGame() {
+            // Clear canvas and set background color
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw player snake
+            ctx.fillStyle = "#0f0";
+            for (const segment of snake) {
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+            }
+
+            // Draw computer snake
+            ctx.fillStyle = "#00f";
+            for (const segment of compSnake) {
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+            }
+
+            // Draw score
+            ctx.fillStyle = "#fff";
+            ctx.font = "20px Arial";
+            ctx.fillText(`Score: ${score}`, 5, 20);
+        }
+
+        // Handle arrow key inputs for snake movement
+        function handleKeydown(event) {
+            if (!gameStarted) {
+        gameStarted = true;
+        return;
+    }
+            const key = event.key;
+            if (key === "ArrowUp" && velocity.y === 0) velocity = { x: 0, y: -1 };
+            if (key === "ArrowDown" && velocity.y === 0) velocity = { x: 0, y: 1 };
+            if (key === "ArrowLeft" && velocity.x === 0) velocity = { x: -1, y: 0 };
+            if (key === "ArrowRight" && velocity.x === 0) velocity = { x: 1, y: 0 };
+        }
+
+        // Add event listener for keydown events
+        document.addEventListener("keydown", handleKeydown);
+
+
+        // Start the game loop
+        gameLoop();
+    </script>
+</body>
+</head>
+
+</html>
